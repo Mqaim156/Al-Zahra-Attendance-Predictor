@@ -117,7 +117,7 @@ def run_main_app():
     with col1:
         st.image(logo_path, width=100) 
     with col2:
-        st.title("Al-Zahra Event Predictor")
+        st.title("Al-Zahra Event Attendance Predictor")
         st.markdown("Enter event details below to predict the attendance.")
 
     # --- Input Section ---

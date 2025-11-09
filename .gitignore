@@ -21,6 +21,7 @@ Dockerfile
 
 Ignore Whatsapp Export files
 
+attendance1.csv
 volunteers_data.txt
 notifications_data.txt
 
