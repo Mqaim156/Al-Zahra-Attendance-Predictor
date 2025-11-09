@@ -1,0 +1,25 @@
+Ignore the old FastAPI app
+
+fastapi.py
+
+Ignore Conda/Python environments
+
+API/
+ml_env/
+venv/
+.venv/
+
+Ignore Python cache files
+
+pycache/
+*.pyc
+
+Ignore Dockerfiles
+
+.dockerignore
+Dockerfile
+
+Ignore Whatsapp Export files
+
+volunteers_data.txt
+notifications_data.txt
