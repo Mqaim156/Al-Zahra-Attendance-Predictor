@@ -16,6 +16,37 @@ except ImportError:
 # This will work locally AND in Docker
 logo_path = "az-logo.png"
 
+# --- PASSWORD PROTECTION FUNCTIONALITY ---
+def check_password():
+    """Returns True if the user has entered the correct password."""
+
+    # Check if the password is in Streamlit's secrets
+    if "APP_PASSWORD" not in st.secrets:
+        st.error("Password not set. Please contact the administrator.")
+        st.stop()
+
+    # Check if the user is already logged in (using session state)
+    if st.session_state.get("logged_in", False):
+        return True
+
+    # If not logged in, show the password form
+    st.header("Login")
+    password = st.text_input("Enter Password:", type="password")
+    
+    if st.button("Login"):
+        if password == st.secrets["APP_PASSWORD"]:
+            st.session_state.logged_in = True
+            st.rerun()  # Rerun the script to show the main app
+        else:
+            st.error("Incorrect password.")
+    return False
+
+# --- MAIN APP LOGIC ---
+
+# Run the password check. If it returns False, the app stops here.
+if not check_password():
+    st.stop()
+
 # --- 2. App Configuration ---
 st.set_page_config(
     page_title="Al-Zahra Attendance Predictor",
@@ -45,6 +76,10 @@ st.markdown("Use the form in the sidebar to enter event details and predict the 
 # --- Sidebar Inputs ---
 st.sidebar.header("Event Features")
 
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.rerun()
+    
 # Get the list of program types
 # IMPORTANT: Update this list to match all the unique types in your data
 program_type_options = [
