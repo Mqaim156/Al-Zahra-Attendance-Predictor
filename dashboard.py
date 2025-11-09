@@ -3,164 +3,226 @@ import pandas as pd
 from pathlib import Path
 
 # We import the prediction function from the file we already created
-# This is a very clean way to separate the UI from the model logic
 try:
     from model_pipeline import predict_pipeline
 except ImportError:
     st.error("Error: 'model_pipeline.py' not found. Please make sure it's in the same folder as app.py.")
     st.stop()
 
-
 # --- 1. SET UP FILE PATH (RELATIVE PATH) ---
-# This path is relative to the app.py file
-# This will work locally AND in Docker
 logo_path = "az-logo.png"
 
-# --- PASSWORD PROTECTION FUNCTIONALITY ---
-def check_password():
-    """Returns True if the user has entered the correct password."""
-
-    # Check if the password is in Streamlit's secrets
-    if "APP_PASSWORD" not in st.secrets:
-        st.error("Password not set. Please contact the administrator.")
-        st.stop()
-
-    # Check if the user is already logged in (using session state)
-    if st.session_state.get("logged_in", False):
-        return True
-
-    # If not logged in, show the password form
-    st.header("Login")
-    password = st.text_input("Enter Password:", type="password")
-    
-    if st.button("Login"):
-        if password == st.secrets["APP_PASSWORD"]:
-            st.session_state.logged_in = True
-            st.rerun()  # Rerun the script to show the main app
-        else:
-            st.error("Incorrect password.")
-    return False
-
-# --- MAIN APP LOGIC ---
-
-# Run the password check. If it returns False, the app stops here.
-if not check_password():
-    st.stop()
-
 # --- 2. App Configuration ---
+# This must be the first Streamlit command.
 st.set_page_config(
     page_title="Al-Zahra Attendance Predictor",
-    page_icon=logo_path,  # Use the relative path
-    layout="centered",
+    page_icon=logo_path,
+    layout="wide",  # Use "wide" layout for a more professional look
     initial_sidebar_state="expanded"
 )
 
-# --- 3. App Header (THE FIX) ---
-# Use columns to put the logo and title side-by-side
-col1, col2 = st.columns([1, 4]) # 1 part logo, 4 parts title
+# --- 3. CUSTOM CSS TO INJECT ---
+# This CSS will add "cards", round corners, and a new header color.
+def load_css():
+    st.markdown("""
+        <style>
+            /* Main container style */
+            .main .block-container {
+                padding-top: 2rem;
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
 
-with col1:
-    try:
-        # Use st.image to display the logo
-        st.image(logo_path, width=100) # Adjust width as needed
-    except st.errors.StreamlitAPIException:
-        st.error("Logo file not found. Make sure 'az-logo.png' is in the same folder as app.py.")
+            /* Create a "card" class for containers */
+            .card {
+                background-color: #FFFFFF;
+                border-radius: 10px;
+                padding: 25px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
 
-with col2:
-    # st.title() only displays text, not images
-    st.title("Al-Zahra Event Predictor")
+            /* Style for headers */
+            h1, h2 {
+                color: #2a3f5f; /* A professional, deep blue */
+            }
+            h3 {
+                color: #334e7c;
+            }
 
-st.markdown("Use the form in the sidebar to enter event details and predict the attendance.")
+            /* Style the main predict button */
+            .stButton>button {
+                background-color: #2a3f5f;
+                color: white;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-weight: bold;
+                border: none;
+                width: 100%;
+            }
+            .stButton>button:hover {
+                background-color: #334e7c;
+                color: white;
+                border: none;
+            }
+            
+            /* Clean up sidebar */
+            .st-emotion-cache-16txtl3 {
+                padding-top: 1rem;
+            }
+            
+            /* Style the metric */
+            .st-emotion-cache-1b0udgb {
+                background-color: #f9f9f9;
+                border-radius: 10px;
+                padding: 20px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
+# --- 4. PASSWORD PROTECTION ---
+def check_password():
+    """Returns True if the user has entered the correct password."""
+    if "APP_PASSWORD" not in st.secrets:
+        st.error("Password not set. Please contact the administrator.")
+        st.stop()
+    if st.session_state.get("logged_in", False):
+        return True
 
-# --- Sidebar Inputs ---
-st.sidebar.header("Event Features")
+    # Center the login form
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
+        with st.container(border=True, height=250):
+            st.image(logo_path, width=100)
+            st.header("Login")
+            password = st.text_input("Enter Password:", type="password", key="password_input")
+            
+            if st.button("Login", use_container_width=True, type="primary"):
+                if password == st.secrets["APP_PASSWORD"]:
+                    st.session_state.logged_in = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.")
+    return False
 
-if st.sidebar.button("Logout"):
-    st.session_state.logged_in = False
-    st.rerun()
+# --- 5. MAIN APP LOGIC ---
+def run_main_app():
+    """This function runs the main app after password is verified."""
     
-# Get the list of program types
-# IMPORTANT: Update this list to match all the unique types in your data
-program_type_options = [
-    "small",
-    "medium",
-    "large",
-    "extra large"
-]
-
-program_type = st.sidebar.selectbox(
-    "Program Scale:",
-    options=program_type_options,
-    help="Select the type of program."
-)
-
-is_weekend = st.sidebar.toggle(
-    "Is it a weekend?",
-    value=True,
-    help="Check this if the event is on a Saturday or Sunday."
-)
-
-is_summer = st.sidebar.toggle(
-    "Is it in summer?",
-    value=False,
-    help="Check this if the event is in June, July, or August."
-)
-
-is_food = st.sidebar.toggle(
-    "Is food being served?",
-    value=True,
-    help="Check this if food (e.g., dinner, Iftar) will be provided."
-)
-
-special_speaker_flag = st.sidebar.toggle(
-    "Is there a special speaker?",
-    value=False,
-    help="Check this if a well-known or guest speaker is featured."
-)
-
-is_special_month = st.sidebar.toggle(
-    "Is it a special Islamic month?",
-    value=True,
-    help="Check this for months like Muharram, Ramadan, etc."
-)
-
-# --- Prediction Logic ---
-if st.sidebar.button("Predict Attendance", type="primary", use_container_width=True):
+    # Load the custom CSS
+    load_css()
     
-    # 1. Collect all inputs into the dictionary that predict_pipeline expects
-    input_data = {
-        "is_summer": 1 if is_summer else 0,
-        "is_weekend": 1 if is_weekend else 0,
-        "program_type": program_type,
-        "special_speaker_flag": 1 if special_speaker_flag else 0,
-        "is_special_month": 1 if is_special_month else 0,
-        "is_food": 1 if is_food else 0
-    }
+    # --- App Header ---
+    col1, col2 = st.columns([1, 4]) 
+    with col1:
+        st.image(logo_path, width=100) 
+    with col2:
+        st.title("Al-Zahra Event Predictor")
+        st.markdown("Enter event details below to predict the attendance.")
 
-    # 2. Call the prediction pipeline
-    try:
-        prediction_output = predict_pipeline(input_data)
-        predicted_attendance = prediction_output.get("predicted_attendance")
-
-        # 3. Display the result
-        st.subheader("📈 Predicted Attendance")
+    # --- Input Section ---
+    st.sidebar.image(logo_path)
+    st.sidebar.header("Navigation")
+    if st.sidebar.button("Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.rerun()
+    
+    st.subheader("Event Features")
+    
+    # Use st.form to group inputs
+    with st.form(key="prediction_form"):
+        # We'll use columns to arrange the inputs neatly
+        col1, col2, col3 = st.columns(3)
         
-        col1, col2 = st.columns(2)
         with col1:
-            st.metric(
-                label="Predicted Guests",
-                value=f"{predicted_attendance:.0f}"
+            program_type_options = ["small", "medium", "large", "extra large"]
+            program_type = st.selectbox(
+                "Program Type:",
+                options=program_type_options,
+                help="Select the type of program."
+            )
+            
+            is_food = st.toggle(
+                "Is food being served?",
+                value=True,
+                help="Check this if food (e.g., dinner, Iftar) will be provided."
             )
         
-        st.info(
-            f"**Confidence Range:** Based on the model's R² score of 0.68 and an average error (MAE) of ~6, you can "
-            f"confidently plan for an attendance between **{predicted_attendance - 6:.0f} and {predicted_attendance + 6:.0f} people**."
-        )
+        with col2:
+            is_weekend = st.toggle(
+                "Is it a weekend?",
+                value=True,
+                help="Check this if the event is on a Saturday or Sunday."
+            )
+            
+            special_speaker_flag = st.toggle(
+                "Is there a special speaker?",
+                value=False,
+                help="Check this if a well-known or guest speaker is featured."
+            )
         
-        with st.expander("See Raw Prediction Data"):
-            st.write(input_data)
-            st.write(prediction_output)
+        with col3:
+            is_summer = st.toggle(
+                "Is it in summer?",
+                value=False,
+                help="Check this if the event is in June, July, or August."
+            )
+            
+            is_special_month = st.toggle(
+                "Is it a special Islamic month?",
+                value=True,
+                help="Check this for months like Muharram, Ramadan, etc."
+            )
+        
+        # The "Submit" button for the form
+        predict_button = st.form_submit_button(
+            label="Predict Attendance", 
+            type="primary", 
+            use_container_width=True
+        )
 
-    except Exception as e:
-        st.error(f"An error occurred during prediction: {e}")
+    # --- Prediction Logic & Output ---
+    if predict_button:
+        # Collect inputs
+        input_data = {
+            "is_summer": 1 if is_summer else 0,
+            "is_weekend": 1 if is_weekend else 0,
+            "program_type": program_type,
+            "special_speaker_flag": 1 if special_speaker_flag else 0,
+            "is_special_month": 1 if is_special_month else 0,
+            "is_food": 1 if is_food else 0
+        }
+
+        # Call the prediction pipeline
+        try:
+            prediction_output = predict_pipeline(input_data)
+            predicted_attendance = prediction_output.get("predicted_attendance")
+
+            # Display the result in its own "card"
+            st.subheader("📈 Predicted Attendance")
+            with st.container(border=True):
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    st.metric(
+                        label="Predicted Guests",
+                        value=f"{predicted_attendance:.0f}"
+                    )
+                
+                with col2:
+                    st.info(
+                        f"**Confidence Range:** Based on the model's R² score of 0.68 and an average error (MAE) of ~6, you can "
+                        f"confidently plan for an attendance between **{predicted_attendance - 6:.0f} and {predicted_attendance + 6:.0f} people**."
+                    )
+                
+                with st.expander("See Raw Prediction Data"):
+                    st.write(input_data)
+                    st.write(prediction_output)
+
+        except Exception as e:
+            st.error(f"An error occurred during prediction: {e}")
+
+# --- Run the App ---
+if not check_password():
+    st.stop()  # Stop the app if password is wrong
+
+run_main_app()  # Run the main app if password is correct
