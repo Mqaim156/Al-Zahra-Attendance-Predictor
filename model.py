@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import joblib
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso, Ridge
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
@@ -71,7 +71,7 @@ X_train_processed = preprocessor.fit_transform(X_train)
 X_test_processed = preprocessor.transform(X_test)
 
 # D. Create and train the Ridge Regression model
-model = Ridge(alpha=0.5)  # alpha is the regularization strength
+model = Lasso(alpha=0.1)  # alpha is the regularization strength
 
 print("--- Training Ridge Regression Model ---")
 model.fit(X_train_processed, y_train)
