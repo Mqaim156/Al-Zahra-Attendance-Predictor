@@ -137,7 +137,7 @@ def run_main_app():
         with col1:
             program_type_options = ["small", "medium", "large", "extra large"]
             program_type = st.selectbox(
-                "Program Type:",
+                "Program Scale:",
                 options=program_type_options,
                 help="Select the type of program."
             )
