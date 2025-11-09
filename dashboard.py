@@ -55,7 +55,7 @@ program_type_options = [
 ]
 
 program_type = st.sidebar.selectbox(
-    "Program Type:",
+    "Program Scale:",
     options=program_type_options,
     help="Select the type of program."
 )
